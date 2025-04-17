@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
+const booksRoutes = require('./routes/books');
+const userRoutes = require('./routes/user')
 
 
 const app = express();
@@ -18,6 +20,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use('/api/books', booksRoutes);
+app.use('/api/auth', userRoutes);
 
 
 module.exports = app;
