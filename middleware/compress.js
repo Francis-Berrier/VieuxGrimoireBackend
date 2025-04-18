@@ -7,7 +7,7 @@ module.exports = async (req, res, next) => {
        return next();
     }
     
-    const name = path.parse(req.file.fileName).name;
+    const name = path.parse(req.file.filename).name;
     const extension = 'webp';
     const fileName = `${name}.${extension}`;
     const outputPath = path.join('images', fileName);
@@ -21,6 +21,7 @@ module.exports = async (req, res, next) => {
         fs.unlinkSync(req.file.path);
 
         req.file.filename = fileName;
+        next();
 
     } catch (error) {
         res.status(500).json( {error} );
