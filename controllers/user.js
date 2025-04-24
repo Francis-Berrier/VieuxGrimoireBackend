@@ -1,55 +1,55 @@
 const User = require('../models/User');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const rules = require('../config/validationConfig');
+const { isValidEmail, isValidPassword} = require('../utils/validators');
+const createError = require('../utils/createError');
+const generateToken = require('../utils/generateToken');
 
 
-exports.signup = (req, res, next) =>  {
-    User.findOne({ email: req.body.email })
-    .then(existing => {
-        if(existing){
-            return res.status(400).json({error : 'Erreur de Connexion'})
-        } else{
-            bcrypt.hash(req.body.password, 10)
-            .then(hash => {
-            const user = new User({
-                email: req.body.email,
-                password: hash
-            });
-            user.save()
-            .then(() => res.status(201).json({message: 'Utilisateur créé'}))
-            .catch(error => res.status(400).json({ error }));
-            }); 
-        }
-    })
-    .catch(error => res.status(500).json({ error }));   
+exports.signup = async (req, res, next) =>  {
+    try {
+        const { email, password } = req.body;
+
+        if(!isValidEmail(email)) throw createError(400, rules.email.errorMessage);
+        if (!isValidPassword(password)) throw createError(400, rules.password.errorMessage);
+
+        const existingUser = await User.findOne({ email: email });
+        if(existingUser) throw createError(400, 'Cet utilisateur existe déjà');
+            
+        const hash =  await bcrypt.hash(password, 10);
+        const user = new User({
+            email: email,
+            password: hash
+        });
+        await user.save();
+        return res.status(201).json({message: 'Utilisateur créé'});
+        
+    } catch (error){
+        res.status(error.statusCode || 500).json({message: error.message});
+    }
 };
 
-exports.login = (req, res, next) => {
-    User.findOne({ email: req.body.email})
-    .then(user=> {
-        if(user === null) {
-            return res.status(401).json({ message: 'Erreur de Connexion'})
-        }else{
-            bcrypt.compare(req.body.password, user.password)
-            .then(valid => {
-                if(valid){
-                    return res.status(200).json({ 
-                        userId: user._id,
-                        token: jwt.sign(
-                            { userId: user._id },
-                            process.env.JWT_SECRET,
-                            { expiresIn: '24h'}
-                        )
-                    });
-                }else{
-                    return res.status(401).json({ message: 'Erreur de Connexion'});
-                }
-            })
-            .catch(error => res.status(500).json({ error }));
-        }
-    })
-    .catch(error =>  res.status(500).json({ error }));
-    
+exports.login = async (req, res, next) => {
+
+    try {
+        const { email, password } = req.body;
+
+        if(!isValidEmail(email)) throw createError(400, rules.email.errorMessage);
+        if (!isValidPassword(password)) throw createError(400, rules.password.errorMessage);
+
+        const user = await User.findOne({ email: email});
+        if(!user) throw createError(401, 'Erreur de Connexion');
+
+        const checkPassword = await bcrypt.compare(password, user.password);
+        if(!checkPassword) throw createError(401, 'Erreur de Connexion');
+
+        return res.status(200).json({ 
+            userId: user._id,
+            token: generateToken(user._id)
+        });
+
+    }catch(error) {
+        res.status(error.statusCode || 500).json({message: error.message});
+    }   
 };

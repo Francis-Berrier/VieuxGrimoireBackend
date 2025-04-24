@@ -1,6 +1,6 @@
 const Book = require('../models/Book');
 const fs = require('fs');
-const{ updateAvgRating }= require('./utils/updateAvgRating')
+const{ updateAvgRating }= require('../utils/updateAvgRating')
 
 
 exports.getBooks = async (req, res, next) =>{
