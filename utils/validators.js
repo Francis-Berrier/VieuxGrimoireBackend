@@ -13,4 +13,4 @@ exports.isValidPassword = (password) => {
         (!requireNumber || /\d/.test(password)) &&
         (!requireSpecialchar || /[^A-Za-z0-9]/.test(password))
       );
-}
+};

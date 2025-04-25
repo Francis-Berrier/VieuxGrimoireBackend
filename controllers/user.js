@@ -4,12 +4,12 @@ const bcrypt = require('bcrypt');
 const rules = require('../config/validationConfig');
 const { isValidEmail, isValidPassword} = require('../utils/validators');
 const createError = require('../utils/createError');
-const generateToken = require('../utils/generateToken');
+const {generateToken} = require('../utils/generateToken');
 
 
 exports.signup = async (req, res, next) =>  {
     try {
-        const { email, password } = req.body;
+        const {email, password}= req.body;
 
         if(!isValidEmail(email)) throw createError(400, rules.email.errorMessage);
         if (!isValidPassword(password)) throw createError(400, rules.password.errorMessage);
@@ -33,8 +33,8 @@ exports.signup = async (req, res, next) =>  {
 exports.login = async (req, res, next) => {
 
     try {
-        const { email, password } = req.body;
-
+        const {email, password}= req.body;
+      
         if(!isValidEmail(email)) throw createError(400, rules.email.errorMessage);
         if (!isValidPassword(password)) throw createError(400, rules.password.errorMessage);
 
@@ -50,6 +50,7 @@ exports.login = async (req, res, next) => {
         });
 
     }catch(error) {
+        console.error("Erreur attrapée dans le contrôleur :", error);
         res.status(error.statusCode || 500).json({message: error.message});
     }   
 };

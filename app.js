@@ -4,10 +4,11 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 const booksRoutes = require('./routes/books');
-const userRoutes = require('./routes/user')
-
+const userRoutes = require('./routes/user');
+const httpLogger = require('./middleware/loggerMiddleware')
 
 const app = express();
+app.use(httpLogger);
 
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('Connexion à MongoDB réussie !'))

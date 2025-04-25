@@ -1,6 +1,8 @@
 const Book = require('../models/Book');
 const fs = require('fs');
-const{ updateAvgRating }= require('../utils/updateAvgRating')
+const createError = require('../utils/createError');
+const{ updateAvgRating }= require('../utils/updateAvgRating');
+const { validateCreateBookData, validateUpdateBookData } = require('../utils/validateBookData')
 
 
 exports.getBooks = async (req, res, next) =>{
@@ -36,6 +38,8 @@ exports.createBook = async (req, res, next) =>{
         const bookObject = JSON.parse(req.body.book);
         delete bookObject._id;
         delete bookObject.userId;
+        bookObject.year = Number(bookObject.year);
+        validateCreateBookData(bookObject);
         const book = new Book({
             ...bookObject,
             userId: req.auth.userId,
@@ -47,9 +51,7 @@ exports.createBook = async (req, res, next) =>{
             res.status(200).json(savedBook);
         } catch {
             fs.unlink(`images/${req.file.filename}`, () => {});
-            const error = new Error();
-            error.statusCode= 500;
-            throw error;
+            throw createError(500, '');
         }
 
     } catch (error) {
@@ -60,18 +62,12 @@ exports.createBook = async (req, res, next) =>{
 exports.rateOneBook = async (req, res, next) =>{
     try{
         const existingRating = await Book.findOne({ _id: req.params.id, 'ratings.userId': req.auth.userId });
-        if(existingRating) {
-            const error = new Error('Vous avez déjà noté le livre');
-            error.statusCode= 403;
-            throw error;
-        }
+        if(existingRating) throw createError(403, 'Vous avez déjà noté le livre');
+
         const userId = req.auth.userId;
         const grade = req.body.rating;
-        if (typeof grade !== 'number' || grade < 0 || grade > 5) {
-            const error = new Error('Note invalide');
-            error.statusCode= 400;
-            throw error;
-        }
+        if (typeof grade !== 'number' || grade < 0 || grade > 5) throw createError(400, 'Note invalide');
+
         await Book.updateOne(
             { _id: req.params.id },
             {
@@ -98,6 +94,10 @@ exports.changeOneBook = async (req, res, next) =>{
             imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}` 
         } : { ...req.body };
         delete bookObject._userId;
+        if(bookObject.year){
+            bookObject.year = Number(bookObject.year);
+        }
+        validateUpdateBookData(bookObject);
     
         const bookToUpdate = await Book.findOne({_id: req.params.id});
     
@@ -105,24 +105,18 @@ exports.changeOneBook = async (req, res, next) =>{
                 if(req.file){
                     fs.unlink(`images/${req.file.filename}`, () => {});
                 }
-                const error = new Error();
-                error.statusCode= 401;
-                throw error;
-            } else {
-                try {
-                    if (req.file) {
-                        const oldFilename = bookToUpdate.imageUrl.split('/images/')[1];
-                        fs.unlink(`images/${oldFilename}`, () => {});
-                    }
-                    await Book.updateOne({ _id : req.params.id }, { ...bookObject, _id: req.params.id });
-                    return res.status(200).json({ message: 'Livre Modifié!'});
-                } catch (error) {
-                    const err = new Error(error.message);
-                    err.statusCode = 400;
-                    throw err;
+                throw createError(401, ''); 
+            } 
+            try {
+                if (req.file) {
+                    const oldFilename = bookToUpdate.imageUrl.split('/images/')[1];
+                    fs.unlink(`images/${oldFilename}`, () => {});
                 }
+                await Book.updateOne({ _id : req.params.id }, { ...bookObject, _id: req.params.id });
+                return res.status(200).json({ message: 'Livre Modifié!'});
+            } catch (error) {
+                throw createError(400, error.message);
             }
-
     }catch(error) {
        return res.status(error.statusCode || 500).json({message: error.message});
     }
@@ -130,25 +124,18 @@ exports.changeOneBook = async (req, res, next) =>{
 exports.deleteBook = async (req, res, next) =>{
     try {
         const bookToDelete = await Book.findOne({ _id : req.params.id });
-    
-        if(bookToDelete.userId != req.auth.userId) {
-            const error = new Error('Not authorized');
-            error.statusCode= 401;
-            throw error;   
-        } else {
-            const filename = bookToDelete.imageUrl.split('/images/')[1];
-            fs.unlink(`images/${filename}`, async () => {
-                try {
-                    await Book.deleteOne({ _id : req.params.id });
-                    return res.status(200).json({ message: 'Objet Supprimé!'});
+        if(bookToDelete.userId != req.auth.userId) throw createError(401, 'Not authorized');
+       
+        const filename = bookToDelete.imageUrl.split('/images/')[1];
+        fs.unlink(`images/${filename}`, async () => {
+            try {
+                await Book.deleteOne({ _id : req.params.id });
+                return res.status(200).json({ message: 'Objet Supprimé!'});
 
-                }catch (error){
-                    const err = new Error(error.message);
-                    err.statusCode= 400;
-                    throw err;   
-                }
-            });
-        };
+            }catch (error){
+                throw createError(500, error.message)
+            }
+        });
 
     }catch(error) {
         return res.status(error.statusCode || 400).json({ error });
