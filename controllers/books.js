@@ -2,7 +2,8 @@ const Book = require('../models/Book');
 const fs = require('fs');
 const createError = require('../utils/createError');
 const{ updateAvgRating }= require('../utils/updateAvgRating');
-const { validateCreateBookData, validateUpdateBookData } = require('../utils/validateBookData')
+const { validateCreateBookData, validateUpdateBookData } = require('../utils/validateBookData');
+const logger = require('../config/logger');
 
 
 exports.getBooks = async (req, res, next) =>{
@@ -10,6 +11,11 @@ exports.getBooks = async (req, res, next) =>{
         const books = await Book.find();
         return res.status(200).json(books);
     } catch(error){
+        logger.error(`Erreur getBooks`, { 
+            statusCode: error.statusCode, 
+            message: error.message, 
+            stack: error.stack 
+        });
         return res.status(500).json({ error });     
     }
 };
@@ -19,6 +25,11 @@ exports.getOneBook = async (req, res, next) =>{
         return res.status(200).json(book);
 
     } catch(error) {
+        logger.error(`Erreur getOneBook livre ${req.params.id}`, { 
+            statusCode: error.statusCode, 
+            message: error.message, 
+            stack: error.stack 
+        });
         return res.status(400).json({ error })
     }
 };
@@ -30,6 +41,11 @@ exports.getBestBooks = async (req, res, next) =>{
         return res.status(200).json(bestBooks);
 
     } catch(error){
+        logger.error(`Erreur getBestBooks:`, { 
+            statusCode: error.statusCode, 
+            message: error.message, 
+            stack: error.stack 
+        });
         return res.status(400).json({ error });
     }
 };
@@ -51,10 +67,15 @@ exports.createBook = async (req, res, next) =>{
             res.status(200).json(savedBook);
         } catch {
             fs.unlink(`images/${req.file.filename}`, () => {});
-            throw createError(500, '');
+            throw createError(500, ' échec sauvegarde mongodB');
         }
 
     } catch (error) {
+        logger.error(`Erreur createBook UserId: ${req.auth.userId}`, { 
+            statusCode: error.statusCode, 
+            message: error.message, 
+            stack: error.stack 
+          });
         res.status(error.statusCode || 400).json({message: error.message});
     }
 };
@@ -62,7 +83,7 @@ exports.createBook = async (req, res, next) =>{
 exports.rateOneBook = async (req, res, next) =>{
     try{
         const existingRating = await Book.findOne({ _id: req.params.id, 'ratings.userId': req.auth.userId });
-        if(existingRating) throw createError(403, 'Vous avez déjà noté le livre');
+        if(existingRating) throw createError(403, 'Livre déjà noté');
 
         const userId = req.auth.userId;
         const grade = req.body.rating;
@@ -83,6 +104,11 @@ exports.rateOneBook = async (req, res, next) =>{
         const savedBook = await updateAvgRating(updatedBook);
         res.status(200).json(savedBook);
     } catch (error) {
+        logger.error(`Erreur rateOneBook UserId: ${req.auth.userId}, BookId: ${req.params.id}`, { 
+            statusCode: error.statusCode, 
+            message: error.message, 
+            stack: error.stack 
+          });
         res.status(error.statusCode || 500).json({message: error.message});
     }
 };
@@ -105,7 +131,7 @@ exports.changeOneBook = async (req, res, next) =>{
                 if(req.file){
                     fs.unlink(`images/${req.file.filename}`, () => {});
                 }
-                throw createError(401, ''); 
+                throw createError(401, `Utilisateur non autorisé`); 
             } 
             try {
                 if (req.file) {
@@ -118,27 +144,37 @@ exports.changeOneBook = async (req, res, next) =>{
                 throw createError(400, error.message);
             }
     }catch(error) {
+        logger.error(`Erreur changeOneBook UserId: ${req.auth.userId}, BookId: ${req.params.id}`, { 
+            statusCode: error.statusCode, 
+            message: error.message, 
+            stack: error.stack 
+        });
        return res.status(error.statusCode || 500).json({message: error.message});
     }
 };
 exports.deleteBook = async (req, res, next) =>{
     try {
         const bookToDelete = await Book.findOne({ _id : req.params.id });
-        if(bookToDelete.userId != req.auth.userId) throw createError(401, 'Not authorized');
+        if(bookToDelete.userId != req.auth.userId) throw createError(401, 'Non autorisé');
        
         const filename = bookToDelete.imageUrl.split('/images/')[1];
-        fs.unlink(`images/${filename}`, async () => {
+        fs.unlink(`images/${filename}`, async (err) => {
+            if (err) throw createError(500, err.message)
             try {
                 await Book.deleteOne({ _id : req.params.id });
                 return res.status(200).json({ message: 'Objet Supprimé!'});
 
             }catch (error){
-                throw createError(500, error.message)
+                throw createError(500, error.message);
             }
         });
 
     }catch(error) {
+        logger.error(`Erreur deleteBook UserId: ${req.auth.userId}, BookId: ${req.params.id}`, { 
+            statusCode: error.statusCode, 
+            message: error.message, 
+            stack: error.stack 
+        });
         return res.status(error.statusCode || 400).json({ error });
     }
-
 };

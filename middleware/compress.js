@@ -24,6 +24,11 @@ module.exports = async (req, res, next) => {
         next();
 
     } catch (error) {
+        logger.error(`Erreur compress 500 `, { 
+            statusCode: error.statusCode, 
+            message: error.message, 
+            stack: error.stack 
+        });
         res.status(500).json( {error} );
 
     }

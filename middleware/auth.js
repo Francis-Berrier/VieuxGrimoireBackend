@@ -13,6 +13,11 @@ module.exports = (req, res, next) => {
         next();
 
     } catch(error){
+        logger.error(`Erreur auth 401 `, { 
+            statusCode: error.statusCode, 
+            message: error.message, 
+            stack: error.stack 
+        });
         res.status(401).json({error});
     }
 };

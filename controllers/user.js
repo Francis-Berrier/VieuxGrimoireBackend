@@ -5,6 +5,7 @@ const rules = require('../config/validationConfig');
 const { isValidEmail, isValidPassword} = require('../utils/validators');
 const createError = require('../utils/createError');
 const {generateToken} = require('../utils/generateToken');
+const logger = require('../config/logger');
 
 
 exports.signup = async (req, res, next) =>  {
@@ -26,6 +27,11 @@ exports.signup = async (req, res, next) =>  {
         return res.status(201).json({message: 'Utilisateur créé'});
         
     } catch (error){
+        logger.error(`Erreur signup Email: ${req.body.email}`, { 
+            statusCode: error.statusCode, 
+            message: error.message, 
+            stack: error.stack 
+        });
         res.status(error.statusCode || 500).json({message: error.message});
     }
 };
@@ -39,10 +45,10 @@ exports.login = async (req, res, next) => {
         if (!isValidPassword(password)) throw createError(400, rules.password.errorMessage);
 
         const user = await User.findOne({ email: email});
-        if(!user) throw createError(401, 'Erreur de Connexion');
+        if(!user) throw createError(401, 'Utilisateur Inconnu');
 
         const checkPassword = await bcrypt.compare(password, user.password);
-        if(!checkPassword) throw createError(401, 'Erreur de Connexion');
+        if(!checkPassword) throw createError(401, 'Erreur de Mot de Passe');
 
         return res.status(200).json({ 
             userId: user._id,
@@ -50,7 +56,11 @@ exports.login = async (req, res, next) => {
         });
 
     }catch(error) {
-        console.error("Erreur attrapée dans le contrôleur :", error);
+        logger.error(`Erreur login Email: ${req.body.email}`, { 
+            statusCode: error.statusCode, 
+            message: error.message, 
+            stack: error.stack 
+        });
         res.status(error.statusCode || 500).json({message: error.message});
     }   
 };

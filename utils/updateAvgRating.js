@@ -14,6 +14,6 @@ exports.updateAvgRating = async (updatedBook) => {
         return savedBook;
 
     } catch{
-        throw createError(500, '');
+        throw createError(500, 'Erreur updateAvgRating');
     }
 };
