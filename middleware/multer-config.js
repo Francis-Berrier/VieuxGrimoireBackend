@@ -1,5 +1,6 @@
 const multer = require('multer');
-const { storage, fileFilter, limits } = require('../config/uploadConfig')
+const { storage, fileFilter, limits } = require('../config/uploadConfig');
+const logger = require('../config/logger');
 
 const upload = multer({ 
     storage, 
