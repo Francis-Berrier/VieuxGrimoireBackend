@@ -1,17 +1,18 @@
+const prisma = require('../config/prisma');
 const createError = require('./createError')
 
-exports.updateAvgRating = async (updatedBook) => {
+exports.updateAvgRating = async (bookId) => {
     try{
-        if(!updatedBook.ratings || updatedBook.ratings.length === 0){
-            updatedBook.averageRating = 0;
-            
-        } else{
-            const total = updatedBook.ratings.reduce((acc, rating) => acc + rating.grade, 0);
-            const avg = total / updatedBook.ratings.length;
-            updatedBook.averageRating = avg;   
-        }
-        const savedBook = await updatedBook.save();
-        return savedBook;
+        const avgResult = await prisma.rating.aggregate({
+            where: { bookId: bookId, },
+            _avg: { rating: true, }
+        });
+        const averageRating = avgResult._avg.rating ?? 0;
+        const updatedBook = await prisma.book.update({
+            where: { id: bookId, },
+            data: { averageRating: averageRating, }
+        });
+        return updatedBook;
 
     } catch{
         throw createError(500, 'Erreur updateAvgRating');
