@@ -1,5 +1,4 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
@@ -10,9 +9,6 @@ const httpLogger = require('./middleware/loggerMiddleware')
 const app = express();
 app.use(httpLogger);
 
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('Connexion à MongoDB réussie !'))
-    .catch(() => console.log('Connexion à MongoDB échouée !'));
 
 app.use(cors({
     origin: '*',
